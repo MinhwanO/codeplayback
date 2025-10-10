@@ -9,10 +9,6 @@ class classTime extends Sequelize.Model {
         primaryKey: true,
         unique: true,
       },
-      score: {
-        type: Sequelize.TEXT,
-        allowNull: true,
-      },
       name: {
         type: Sequelize.TEXT,
         allowNull: true,
@@ -25,10 +21,6 @@ class classTime extends Sequelize.Model {
         type: Sequelize.TEXT,
         allowNull: true,
       },
-      gyogua: {
-        type: Sequelize.TEXT,
-        allowNull: true,
-      },
       cstime: {
         type: Sequelize.TEXT,
         allowNull: true,
@@ -37,23 +29,7 @@ class classTime extends Sequelize.Model {
         type: Sequelize.TEXT,
         allowNull: true,
       },
-      daehak: {
-        type: Sequelize.TEXT,
-        allowNull: true,
-      },
-      gaeseol: {
-        type: Sequelize.TEXT,
-        allowNull: true,
-      },
-      gshak: {
-        type: Sequelize.TEXT,
-        allowNull: true,
-      },
       pfname: {
-        type: Sequelize.TEXT,
-        allowNull: true,
-      },
-      language: {
         type: Sequelize.TEXT,
         allowNull: true,
       },

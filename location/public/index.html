@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>위치 공유</title>
+  <script type="text/javascript" src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=91l093bdzm"></script>
+  <style>
+    #map { width: 100%; height: 500px; }
+  </style>
+</head>
+<body>
+  <h1>실시간 위치 공유</h1>
+  <div>
+    <input type="text" id="nickname" placeholder="닉네임" style="width:100px">
+    <button onclick="startSharing()">위치 공유 시작</button>
+  </div>
+  <div id="map"></div>
+
+  <script>
+    const ws = new WebSocket("ws://localhost:8001");
+
+    // 네이버 지도 초기화
+    const map = new naver.maps.Map("map", {
+      center: new naver.maps.LatLng(37.5665, 126.9780), // 초기 지도 위치: 서울
+      level: 10
+    });
+
+    // 닉네임별 마커 저장 객체
+    const markers = {};
+    let myNickname = "";
+
+    function startSharing() {
+      if (!navigator.geolocation) {
+        alert("위치 정보를 지원하지 않는 브라우저입니다.");
+        return;
+      }
+
+      myNickname = document.getElementById("nickname").value || "익명";
+
+      navigator.geolocation.watchPosition((pos) => {
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+        const myLoc = new naver.maps.LatLng(lat, lon);
+
+        // 내 위치를 서버로 전송
+        ws.send(JSON.stringify({
+          type: "location",
+          nickname: myNickname,
+          lat: lat,
+          lon: lon
+        }));
+
+        // 내 위치가 바뀔 때마다 지도 중심을 내 위치로 이동
+        map.setCenter(myLoc);
+      }, (err) => {
+        console.error(err);
+      }, {
+        enableHighAccuracy: true,
+        timeout: 5000,
+        maximumAge: 0
+      });
+    }
+
+    // 서버에서 위치 정보 수신
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+
+      if (data.type === "location") {
+        const loc = new naver.maps.LatLng(data.lat, data.lon);
+
+        // 닉네임별 마커 관리
+        if (!markers[data.nickname]) {
+          // 처음 들어온 유저 → 마커 새로 생성
+          const isMe = data.nickname === myNickname;
+          markers[data.nickname] = new naver.maps.Marker({
+            position: loc,
+            map: map,
+            title: data.nickname,
+            icon: {
+              content: `<div style="background: ${isMe ? '#2ecc71' : '#3498db'}; color: white; padding: 4px 8px; border-radius: 8px; font-size: 12px;">
+                          ${data.nickname}
+                        </div>`,
+              anchor: new naver.maps.Point(30, 20)
+            }
+          });
+        } else {
+          // 이미 있는 유저 → 위치 업데이트
+          markers[data.nickname].setPosition(loc);
+        }
+      }
+
+      if (data.type === "system") {
+        console.log(data.message);
+      }
+    }
+  </script>
+</body>
+</html>

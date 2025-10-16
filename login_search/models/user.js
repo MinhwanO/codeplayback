@@ -14,17 +14,23 @@ class User extends Sequelize.Model {
       username: {
         type: Sequelize.STRING(20),
         allowNull: false,
-        primaryKey: true, 
-        unique: true,     
+        primaryKey: true,
+        unique: true,
       },
       password: {
-        type: Sequelize.STRING(255), 
+        type: Sequelize.STRING(255),
         allowNull: false,
       },
       friend_list: {
-        type: Sequelize.JSON,  // 친구 목록 JSON 배열
+        type: Sequelize.JSON, // 친구 목록 JSON 배열
         defaultValue: [],
       },
+      profileImage: {
+        type: Sequelize.STRING(255), // 이미지 경로 저장
+        allowNull: true,
+        defaultValue: '/images/default.jpg', // 기본 이미지 
+      },
+
       created_at: {
         type: Sequelize.DATE,
         allowNull: false,

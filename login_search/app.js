@@ -25,6 +25,7 @@ sequelize.sync({ alter: true }) // 모델 변경 시 자동 반영
 app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+app.use('/times', timesRouter);
 
 // ✅ 정적 파일 제공
 app.use(express.static(path.join(__dirname, 'public')));
@@ -32,6 +33,14 @@ app.use(express.static(path.join(__dirname, 'public')));
 // 루트 페이지
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'views', 'sequelize.html'));
+});
+
+
+app.get('/timetable/search', (req, res) => {
+  const { name } = req.query;
+  // DB에서 name이 포함된 시간표 검색
+  const result = timetableDB.filter(t => t.교과목명.includes(name));
+  res.json(result);
 });
 
 // ================== 라우터 등록 ==================

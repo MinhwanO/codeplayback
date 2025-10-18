@@ -30,7 +30,10 @@ class User extends Sequelize.Model {
         allowNull: true,
         defaultValue: '/images/default.jpg', // 기본 이미지 
       },
-
+      timetable: {
+        type: Sequelize.JSON, // 과목 목록을 JSON 배열로 저장
+        defaultValue: [],
+      },
       created_at: {
         type: Sequelize.DATE,
         allowNull: false,

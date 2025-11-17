@@ -28,7 +28,7 @@ class User extends Sequelize.Model {
       profileImage: {
         type: Sequelize.STRING(255), // 이미지 경로 저장
         allowNull: true,
-        defaultValue: '/images/default.jpg', // 기본 이미지 
+        defaultValue: '/images/default.jpg', // 기본 이미지
       },
       timetable: {
         type: Sequelize.JSON, // 과목 목록을 JSON 배열로 저장

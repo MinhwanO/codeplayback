@@ -56,7 +56,7 @@ router.post('/login', async (req, res) => {
     const match = await bcrypt.compare(password, user.password);
     if (!match) return res.status(400).json({ message: '비밀번호가 틀렸습니다.' });
 
-    const token = jwt.sign({ username: user.username }, 'team2-key', { expiresIn: '1h' });
+    const token = jwt.sign({ username: user.username }, 'team2-key', { expiresIn: '4h' });
 
     res.json({
       message: `${user.name}님 로그인 성공!`,
@@ -74,6 +74,60 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// ================== 이름(name) 변경 ==================
+router.post('/update_name', async (req, res) => {
+  try {
+    // ⭐️ 1. 'Authorization' 헤더에서 전체 토큰 문자열을 가져옵니다.
+    const authHeader = req.headers.authorization;
+    
+    // 2. newName은 req.body에서 newName이 아닌 nickname으로 받아야 합니다.
+    //    프론트엔드에서 nickname으로 보냈기 때문입니다.
+    const { nickname } = req.body; 
+
+    if (!authHeader) return res.status(401).json({ message: '토큰이 없습니다.' });
+    if (!nickname || nickname.trim() === '') // 닉네임 유효성 검사
+      return res.status(400).json({ message: '새 별명을 입력해주세요.' });
+
+    // ⭐️ 3. "Bearer " 부분을 제거하고 실제 토큰 값만 추출합니다.
+    const token = authHeader.split(' ')[1]; // "Bearer [token]" -> [token]
+
+    if (!token) return res.status(401).json({ message: '토큰 형식이 올바르지 않습니다.' });
+
+    const payload = jwt.verify(token, 'team2-key');
+    const user = await User.findOne({ where: { username: payload.username } });
+    if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
+
+    // user.name 대신 user.nickname 또는 user.name을 사용하세요.
+    // 프론트엔드에서 nickname으로 보내고 있으므로, 백엔드 모델에 맞춰 업데이트하세요.
+    user.name = nickname; // user 모델의 필드명에 맞게 'nickname' 대신 'name' 사용
+    await user.save();
+
+    res.json({ message: '별명이 성공적으로 변경되었습니다.', name: user.name });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: '서버 오류' });
+  }
+});
+// ================== 닉네임 가져오기 ==================
+router.get('/set_name', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ message: '토큰이 없습니다.' });
+
+    // ⭐️ 3. "Bearer " 부분을 제거하고 실제 토큰 값만 추출합니다.
+    const token = authHeader.split(' ')[1]; // "Bearer [token]" -> [token]
+
+    if (!token) return res.status(401).json({ message: '토큰 형식이 올바르지 않습니다.' });
+    const payload = jwt.verify(token, 'team2-key');
+    const user = await User.findOne({ where: { username: payload.username } });
+    if (!user) return res.status(404).send('사용자를 찾을 수 없습니다.');
+
+    res.json({ message: '별명이 성공적으로 반영되었습니다.', name: user.name });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('서버 오류');
+  }
+});
 // ================== 프로필 이미지 예시 가져오기 ==================
 router.get('/example-images', (req, res) => {
   const images = [1,2,3,4,5].map(i => ({
@@ -190,7 +244,7 @@ router.post('/remove_friend', async (req, res) => {
     res.status(500).send('서버 오류');
   }
 });
-
+/*
 // 내 친구 목록 조회
 router.get('/my_friend_list_show', async (req, res) => {
   try {
@@ -204,7 +258,64 @@ router.get('/my_friend_list_show', async (req, res) => {
     res.json({ my_friend_list_show: user.friend_list || [] });
   } catch (err) { console.error(err); res.status(500).send('서버 오류'); }
 });
+*/
+// 내 친구 목록 조회
+router.get('/my_friend_list_show', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ message: '토큰이 없습니다.' });
 
+    // ⭐️ "Bearer " 부분을 제거하고 실제 토큰 값만 추출합니다.
+    const token = authHeader.split(' ')[1]; // "Bearer [token]" -> [token]
+
+    if (!token) return res.status(401).json({ message: '토큰 형식이 올바르지 않습니다.' });
+    const payload = jwt.verify(token, 'team2-key');
+
+    const user = await User.findOne({ where: { username: payload.username } });
+    if (!user) return res.status(404).send('사용자를 찾을 수 없습니다.');
+
+    // 1. user.friend_list는 [ 'friend_username_1', 'friend_username_2', ... ] 형태입니다.
+    const friendUsernames = user.friend_list || [];
+
+    // 2. 각 username을 사용하여 User 테이블에서 상세 정보를 조회합니다.
+    const friendsDataPromises = friendUsernames.map(async (friendUsername, index) => {
+      const friendUser = await User.findOne({ 
+        where: { username: friendUsername }, 
+        attributes: ['username', 'name', 'studentId'] // 필요한 필드만 선택
+      });
+
+      if (!friendUser) {
+        // 친구 사용자를 찾을 수 없는 경우, 건너뛰거나 기본 데이터를 반환할 수 있습니다.
+        return null;
+      }
+
+      // 3. 프론트엔드의 Friend 타입에 맞게 데이터 가공
+      return {
+        // 프론트엔드의 'id' 필드로 사용할 고유 식별자 (여기서는 username 사용)
+        id: friendUser.username, 
+        name: friendUser.name || '이름 없음', // User 모델에 name 필드가 있다고 가정
+        studentId: friendUser.studentId || '학번 없음', // User 모델에 studentId 필드가 있다고 가정
+        
+        // 서버에서 관리하지 않는 필드는 기본값 설정
+        status: '수업 없음', 
+        isFavorite: false, 
+        isOn: true, 
+      };
+    });
+
+    // 4. 모든 조회가 완료될 때까지 기다립니다.
+    let formattedFriendList = await Promise.all(friendsDataPromises);
+
+    // 5. 조회 실패 (null) 항목은 제거합니다.
+    formattedFriendList = formattedFriendList.filter(f => f !== null);
+
+    res.json({ my_friend_list_show: formattedFriendList });
+
+  } catch (err) { 
+    console.error(err); 
+    res.status(500).send('서버 오류'); 
+  }
+});
 
 // ================== 회원별 시간표 관리 ==================
 const ClassTime = require('../models/time');
